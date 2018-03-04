@@ -18,6 +18,7 @@ setup(
     name=NAME,
     py_modules='pinub',
     python_requires=REQUIRES_PYTHON,
+    include_package_data=True,
     install_required=REQUIRED,
     license=license
 )
