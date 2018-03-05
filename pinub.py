@@ -1,13 +1,15 @@
+import bcrypt
 import os
 import psycopg2
+import psycopg2.extras
 
-from psycopg2.extras import DictCursor
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
+from functools import wraps
 from urllib.parse import urlencode
 
 app = Flask(__name__)
-app.secret_key = os.environ['FLASK_SECRET_KEY']
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'super-secret-key')
 
 
 SESSION_TOKEN = 'token'
@@ -17,13 +19,11 @@ SESSION_TOKEN = 'token'
 # Helpers
 # -------
 
-
 def get_db():
-    return g.get('pg_conn', psycopg2.connect(os.environ['DATABASE_URL']))
-
-
-def get_cur():
-    return g.get('pg_cur', get_db().cursor(cursor_factory=DictCursor))
+    return g.get('_db', psycopg2.connect(
+        dsn=os.getenv('DATABASE_URL'),
+        cursor_factory=psycopg2.extras.DictCursor
+    ))
 
 
 def init_db():
@@ -34,32 +34,32 @@ def init_db():
 
 
 def query_db(query, args=(), one=False):
-    db = get_cur()
-    db.execute(query, args)
-    res = db.fetchall()
+    cur = get_db().cursor()
+    cur.execute(query, args)
+    res = cur.fetchall()
     return (res[0] if res else None) if one else res
 
 
-# -------
-# Filters
-# -------
+# ----------
+# Decorators
+# ----------
+
+def private(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if g.user is None:
+            return redirect(url_for('signin', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 
-def lremove(str, prefix):
-    return str[len(prefix):] if str.startswith(prefix) else str
-
-
-app.jinja_env.filters['lremove'] = lremove
-
-
-# --------
-# Commands
-# --------
-
-@app.cli.command('initdb')
-def initdb_command():
-    init_db()
-    print('Initialized the database.')
+def public(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if g.user is not None:
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # -------
@@ -71,15 +71,14 @@ def before_request():
     g.user = None
     if SESSION_TOKEN in session:
         g.user = query_db((
-            'SELECT u.id, u.email, u.created_at FROM users u'
+            'SELECT u.id, u.email, u.created_at, l.active_at FROM users u'
             ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
             ' LIMIT 1'), [session[SESSION_TOKEN]], one=True)
 
 
 @app.teardown_appcontext
 def close_database(exception):
-    if hasattr(g, 'pg_cur'):
-        get_cur().close()
+    if hasattr(g, '_db'):
         get_db().close()
 
 
@@ -99,29 +98,86 @@ def index():
 
 
 @app.route('/signin')
+@public
 def signin():
-    session[SESSION_TOKEN] = '3f4c5dd7-8f4a-437c-95e8-b7e7a5680b62'
+    # session[SESSION_TOKEN] = '1f859354-015e-48b0-a335-135b59f6743d'
     return render_template('signin.html')
 
 
-@app.route('/signout')
-def signout():
-    session.pop('user', None)
-    return redirect(url_for('index'))
+@app.route('/signin', methods=['POST'])
+@public
+def do_signin():
+    errors = {}
+    user = query_db(
+        'SELECT id, email, password FROM users WHERE email = %s',
+        [request.form.get('email')],
+        one=True
+    )
+    if user is None:
+        print('User not found')
+        errors['email'] = 'Invalid Email or Password'
+    elif not bcrypt.checkpw(request.form.get('password').encode('utf-8'), user['password'].encode('utf-8')):
+        print('Password not correct')
+        errors['email'] = 'Invalid Email or Password'
+    else:
+        print('Password and Email correct')
+        db = get_db()
+        cur = db.cursor()
+        cur.execute(
+            'INSERT INTO logins (user_id) VALUES (%s) RETURNING token',
+            [user['id']],
+        )
+        res = cur.fetchone()
+        db.commit()
+        print(res['token'])
+        session[SESSION_TOKEN] = res['token']
+        return redirect(url_for('index'))
+    return render_template('signin.html', errors=errors)
 
 
 @app.route('/register')
+@public
 def register():
     return render_template('register.html')
 
 
+@app.route('/signout')
+@private
+def signout():
+    session.pop(SESSION_TOKEN, None)
+    return redirect(url_for('index'))
+
+
 @app.route('/profile')
+@private
 def profile():
     return render_template('profile.html')
 
 
 @app.route('/<path:url>')
+@private
 def link(url=''):
     if len(request.args) > 0:
         url += '?' + urlencode(request.args)
     return url
+
+
+# --------
+# Commands
+# --------
+
+@app.cli.command('initdb')
+def initdb_command():
+    init_db()
+    print('Initialized the database.')
+
+
+# -------
+# Filters
+# -------
+
+def lremove(str, prefix):
+    return str[len(prefix):] if str.startswith(prefix) else str
+
+
+app.jinja_env.filters['lremove'] = lremove
