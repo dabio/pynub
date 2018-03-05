@@ -58,15 +58,10 @@ def initdb_command():
 def before_request():
     g.user = None
     if SESSION_TOKEN in session:
-        g.user = query_db(
-            (
-                'SELECT u.id, u.email, u.created_at FROM users u'
-                ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
-                ' LIMIT 1'
-            ),
-            [session[SESSION_TOKEN]],
-            one=True
-        )
+        g.user = query_db((
+            'SELECT u.id, u.email, u.created_at FROM users u'
+            ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
+            ' LIMIT 1'), [session[SESSION_TOKEN]], one=True)
 
 
 @app.teardown_appcontext
@@ -84,7 +79,11 @@ def close_database(exception):
 def index():
     if g.user is None:
         return render_template('home.html')
-    return 'index'
+    return render_template('links.html', links=query_db((
+        'SELECT id, url, ul.created_at FROM links l'
+        ' JOIN user_links ul ON l.id = ul.link_id AND ul.user_id = %s'
+        ' ORDER BY ul.created_at DESC'),
+        [g.user['id']]))
 
 
 @app.route('/signin')

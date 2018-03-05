@@ -1,0 +1,20 @@
+{% extends "_layout.html" %}
+
+{% block title %}Your Links{% endblock %}
+
+{% block body %}
+  <h2>Your Links</h2>
+
+  <ul class="links">
+    {% for link in links %}
+    <li>
+      <a href="{{ link.url }}">{{ link.url }}</a>
+      <span>
+        <time datetime="{{ link.created_at }}">{{ link.created_at }}</time>
+        <a data-id="{{ link.id }}" class="delete">delete</a>
+        <a data-id="{{ link.id }}" class="cancel">cancel</a>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
