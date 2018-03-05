@@ -61,7 +61,7 @@
       list.push(el.dataset.id);
       list = list.filter(function(v, k, self) {
         return self.indexOf(v) == k;
-      })
+      });
 
       updateCookieList(list);
     },
@@ -78,10 +78,14 @@
   ;
 
   document.querySelectorAll('a.delete').forEach((el, index) => {
-    el.addEventListener('click', function() {deleteClicked(el)});
+    el.addEventListener('click', function() {
+      deleteClicked(el);
+    });
   });
   document.querySelectorAll('a.cancel').forEach((el, index) => {
-    el.addEventListener('click', function() {cancelClicked(el)});
+    el.addEventListener('click', function() {
+      cancelClicked(el);
+    });
   });
 
   // This removes all "deleteMe" cookie information. When this code gets
