@@ -1,3 +1,4 @@
+/*jshint esversion: 6 */
 ;(function() {
 
   const
@@ -36,7 +37,7 @@
         c = findCookie(cookieName) || cookieName+'=';
 
       c = c.trim().replace(cookieName+'=', '');
-      if (c.length != 0) {
+      if (c.length !== 0) {
         list = c.split(',');
       }
 
