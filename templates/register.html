@@ -1,0 +1,38 @@
+{% extends "_layout.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block body %}
+  <form method="post" class="register">
+    <fieldset>
+      <legend>Register</legend>
+      <div>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" placeholder="email@example.com" value="" required autofocus>
+        {# with .User.Errors.Email }}
+          <small class="error">{{ . }}</small>
+        {{ end #}
+      </div>
+
+      <div>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" placeholder="password" required>
+        {# with .User.Errors.Password }}
+          <small class="error">{{ . }}</small>
+        {{ end #}
+      </div>
+
+      <div>
+        <label for="password_confirm">Confirm Password</label>
+        <input id="password_confirm" name="password_confirm"  type="password" placeholder="password" required>
+        {# with .User.Errors.PasswordConfirm }}
+          <small class="error">{{ . }}</small>
+        {{ end #}
+      </div>
+
+      <div>
+        <button type="submit">Register</button>
+      </div>
+    </fieldset>
+  </form>
+{% endblock %}
