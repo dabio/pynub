@@ -40,6 +40,18 @@ def query_db(query, args=(), one=False):
     return (res[0] if res else None) if one else res
 
 
+# -------
+# Filters
+# -------
+
+
+def lremove(str, prefix):
+    return str[len(prefix):] if str.startswith(prefix) else str
+
+
+app.jinja_env.filters['lremove'] = lremove
+
+
 # --------
 # Commands
 # --------
