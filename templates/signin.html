@@ -6,20 +6,17 @@
   <form method="post" class="signin">
     <fieldset>
       <legend>Sign In</legend>
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
       <div>
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" placeholder="email@example.com" value="" required autofocus>
-        {# with .User.Errors.Email }}
-          <small class="error">{{ . }}</small>
-        {{ end #}
+        <input id="email" name="email" type="email"{% if error %} class="error"{% endif %} placeholder="email@example.com" value="" required autofocus>
       </div>
 
       <div>
         <label for="password">Password</label>
-        <input id="password" name="password" type="password" placeholder="password" required>
-        {# with .User.Errors.Password }}
-          <small class="error">{{ . }}</small>
-        {{ end #}
+        <input id="password" name="password" type="password"{% if error %} class="error"{% endif %} placeholder="password" required>
       </div>
     </fieldset>
     <div>

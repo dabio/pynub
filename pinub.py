@@ -40,6 +40,39 @@ def query_db(query, args=(), one=False):
     return (res[0] if res else None) if one else res
 
 
+def modify_db(query, args=()):
+    db = get_db()
+    cur = db.cursor()
+    cur.execute(query, args)
+    res = cur.fetchone()
+    db.commit()
+    return res
+
+
+def get_user_by_email(email):
+    return query_db(
+        'SELECT id, email, password FROM users WHERE email = %s',
+        [request.form.get('email')], one=True)
+
+
+def get_user_by_token(token):
+    return query_db((
+        'SELECT u.id, u.email, u.created_at, l.active_at FROM users u'
+        ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
+        ' LIMIT 1'), [token], one=True)
+
+
+def update_token(token):
+    pass
+
+
+def add_token(user_id):
+    res = modify_db(
+        'INSERT INTO logins (user_id) VALUES (%s) RETURNING token',
+        [user_id])
+    return res['token']
+
+
 # ----------
 # Decorators
 # ----------
@@ -70,10 +103,7 @@ def public(f):
 def before_request():
     g.user = None
     if SESSION_TOKEN in session:
-        g.user = query_db((
-            'SELECT u.id, u.email, u.created_at, l.active_at FROM users u'
-            ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
-            ' LIMIT 1'), [session[SESSION_TOKEN]], one=True)
+        g.user = get_user_by_token(session[SESSION_TOKEN])
 
 
 @app.teardown_appcontext
@@ -107,32 +137,18 @@ def signin():
 @app.route('/signin', methods=['POST'])
 @public
 def do_signin():
-    errors = {}
-    user = query_db(
-        'SELECT id, email, password FROM users WHERE email = %s',
-        [request.form.get('email')],
-        one=True
+    user = get_user_by_email([request.form.get('email')])
+    invalid = user is None or not bcrypt.checkpw(
+        request.form.get('password').encode('utf-8'),
+        user['password'].encode('utf-8'),
     )
-    if user is None:
-        print('User not found')
-        errors['email'] = 'Invalid Email or Password'
-    elif not bcrypt.checkpw(request.form.get('password').encode('utf-8'), user['password'].encode('utf-8')):
-        print('Password not correct')
-        errors['email'] = 'Invalid Email or Password'
+
+    if invalid:
+        error = 'Invalid Email or Password'
     else:
-        print('Password and Email correct')
-        db = get_db()
-        cur = db.cursor()
-        cur.execute(
-            'INSERT INTO logins (user_id) VALUES (%s) RETURNING token',
-            [user['id']],
-        )
-        res = cur.fetchone()
-        db.commit()
-        print(res['token'])
-        session[SESSION_TOKEN] = res['token']
+        session[SESSION_TOKEN] = add_token(user['id'])
         return redirect(url_for('index'))
-    return render_template('signin.html', errors=errors)
+    return render_template('signin.html', error=error or None)
 
 
 @app.route('/register')

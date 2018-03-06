@@ -116,6 +116,7 @@ form small {
   margin-bottom: .5rem;
   font-size: .875rem;
 }
+div.error,
 small.error {
   color: #e7040f;
 }
