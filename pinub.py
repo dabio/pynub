@@ -51,19 +51,21 @@ def modify_db(query, args=()):
 
 def get_user_by_email(email):
     return query_db(
-        'SELECT id, email, password FROM users WHERE email = %s',
+        'SELECT id, email, password, created_at FROM users WHERE email = %s',
         [request.form.get('email')], one=True)
 
 
 def get_user_by_token(token):
     return query_db((
-        'SELECT u.id, u.email, u.created_at, l.active_at FROM users u'
+        'SELECT u.id, u.email, u.created_at, l.active_at, l.token FROM users u'
         ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
         ' LIMIT 1'), [token], one=True)
 
 
-def update_token(token):
-    pass
+def refresh_token(token):
+    modify_db((
+        'UPDATE logins SET active_at = now() WHERE token = %s'
+        ' RETURNING active_at'), [token])
 
 
 def add_token(user_id):
@@ -106,6 +108,12 @@ def before_request():
         g.user = get_user_by_token(session[SESSION_TOKEN])
 
 
+@app.teardown_request
+def request_tearing_down(exception):
+    if g.user is not None:
+        refresh_token(g.user['token'])
+
+
 @app.teardown_appcontext
 def close_database(exception):
     if hasattr(g, '_db'):
@@ -130,7 +138,6 @@ def index():
 @app.route('/signin')
 @public
 def signin():
-    # session[SESSION_TOKEN] = '1f859354-015e-48b0-a335-135b59f6743d'
     return render_template('signin.html')
 
 
