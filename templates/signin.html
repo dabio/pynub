@@ -11,12 +11,12 @@
       {% endif %}
       <div>
         <label for="email">Email</label>
-        <input id="email" name="email" type="email"{% if error %} class="error"{% endif %} placeholder="email@example.com" value="" required autofocus>
+        <input id="email" name="email" type="email"{% if error %} class="error"{% endif %} placeholder="email@example.com" value="{{ request.form.email }}" required{% if not request.form.email %} autofocus{% endif %}>
       </div>
 
       <div>
         <label for="password">Password</label>
-        <input id="password" name="password" type="password"{% if error %} class="error"{% endif %} placeholder="password" required>
+        <input id="password" name="password" type="password"{% if error %} class="error"{% endif %} placeholder="password" required{% if request.form.email %} autofocus{% endif %}>
       </div>
     </fieldset>
     <div>

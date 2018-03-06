@@ -14,6 +14,10 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'super-secret-key')
 
 SESSION_TOKEN = 'token'
 
+# User Feeback
+SIGNIN_NO_ACCOUNT = 'Invalid Email or Password'
+SIGNIN_WRONG_PASS = 'Invalid Email or Password'
+
 
 # -------
 # Helpers
@@ -52,7 +56,7 @@ def modify_db(query, args=()):
 def get_user_by_email(email):
     return query_db(
         'SELECT id, email, password, created_at FROM users WHERE email = %s',
-        [request.form.get('email')], one=True)
+        [email], one=True)
 
 
 def get_user_by_token(token):
@@ -109,7 +113,7 @@ def before_request():
 
 
 @app.teardown_request
-def request_tearing_down(exception):
+def refresh_user_token(exception):
     if g.user is not None:
         refresh_token(g.user['token'])
 
@@ -144,18 +148,17 @@ def signin():
 @app.route('/signin', methods=['POST'])
 @public
 def do_signin():
-    user = get_user_by_email([request.form.get('email')])
-    invalid = user is None or not bcrypt.checkpw(
-        request.form.get('password').encode('utf-8'),
-        user['password'].encode('utf-8'),
-    )
+    user = get_user_by_email(request.form.get('email'))
+    if user is None:
+        return render_template('signin.html', error=SIGNIN_NO_ACCOUNT)
 
-    if invalid:
-        error = 'Invalid Email or Password'
-    else:
-        session[SESSION_TOKEN] = add_token(user['id'])
-        return redirect(url_for('index'))
-    return render_template('signin.html', error=error or None)
+    if not bcrypt.checkpw(
+            request.form.get('password').encode('utf-8'),
+            user['password'].encode('utf-8')):
+        return render_template('signin.html', error=SIGNIN_WRONG_PASS)
+
+    session[SESSION_TOKEN] = add_token(user['id'])
+    return redirect(url_for('index'))
 
 
 @app.route('/register')
