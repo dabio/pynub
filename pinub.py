@@ -123,10 +123,15 @@ def public(f):
 # -------
 
 @app.before_request
-def before_request():
+def preload_user():
     g.user = None
     if SESSION_TOKEN in session:
         g.user = get_user_by_token(session[SESSION_TOKEN])
+
+
+@app.before_request
+def prolong_session():
+    session.permanent = True
 
 
 @app.teardown_request
