@@ -96,6 +96,36 @@ def add_token(user_id):
     return res['token']
 
 
+def get_link(url):
+    return query_db(
+        'SELECT id FROM links WHERE url = %s LIMIT 1', [url], one=True)
+
+
+def create_link(url):
+    res = modify_db('INSERT INTO links (url) VALUES (%s) RETURNING id', [url])
+    return res['id']
+
+
+def get_link_for_user(link_id, user_id):
+    return query_db((
+        'SELECT created_at FROM user_links WHERE link_id = %s AND user_id = %s'
+        ' LIMIT 1'), [link_id, user_id], one=True)
+
+
+def create_link_for_user(url, user_id):
+    link_id = get_link(url)
+    if link_id is None:
+        link_id = create_link(url)
+
+    res = get_link_for_user(link_id, user_id)
+    if res is None:
+        res = modify_db((
+            'INSERT INTO user_links (link_id, user_id) VALUES (%s, %s)'
+            ' RETURNING created_at'), link_id, user_id)
+
+    return res
+
+
 # ----------
 # Decorators
 # ----------
