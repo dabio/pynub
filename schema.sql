@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
   "created_at" timestamp (0) NOT NULL DEFAULT (now() at time zone 'utc')
 );
 
+ALTER TABLE users ALTER COLUMN password TYPE character varying (128);
+
 --DROP TABLE IF EXISTS links CASCADE;
 CREATE TABLE IF NOT EXISTS links (
   "id" SERIAL PRIMARY KEY,

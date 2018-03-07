@@ -2,6 +2,7 @@ import bcrypt
 import os
 import psycopg2
 import psycopg2.extras
+import re
 
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
@@ -13,15 +14,24 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'super-secret-key')
 
 
 SESSION_TOKEN = 'token'
+EMAIL_RE = '.+@.+\..+'
+MIN_PWD_LEN = 4
 
 # User Feeback
-SIGNIN_NO_ACCOUNT = 'Invalid Email or Password'
-SIGNIN_WRONG_PASS = 'Invalid Email or Password'
+SIGNIN_NO_ACCOUNT = 'Invalid Email or Password.'
+SIGNIN_WRONG_PASS = 'Invalid Email or Password.'
 
+REGISTER_ACCOUNT_EXISTS = (
+    'Account already exists. Would you like to sign in instead?'
+)
+REGISTER_INVALID_EMAIL = 'Invalid Email.'
+REGISTER_PWD_TOO_SHORT = 'Password is too short.'
+REGISTER_PWD_DONT_MATCH = 'Passwords do not match.'
 
 # -------
 # Helpers
 # -------
+
 
 def get_db():
     return g.get('_db', psycopg2.connect(
@@ -64,6 +74,13 @@ def get_user_by_token(token):
         'SELECT u.id, u.email, u.created_at, l.active_at, l.token FROM users u'
         ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
         ' LIMIT 1'), [token], one=True)
+
+
+def create_user(email, password_hash):
+    res = modify_db(
+        'INSERT INTO users (email, password) VALUES (%s, %s) RETURNING id',
+        [email, password_hash])
+    return res['id']
 
 
 def refresh_token(token):
@@ -165,6 +182,31 @@ def do_signin():
 @public
 def register():
     return render_template('register.html')
+
+
+@app.route('/register', methods=['POST'])
+@public
+def do_register():
+    email = request.form.get('email')
+    passw = request.form.get('password')
+
+    user = get_user_by_email(email)
+    if user is not None:
+        return render_template('register.html', error=REGISTER_ACCOUNT_EXISTS)
+
+    if re.search(EMAIL_RE, email) is None:
+        return render_template('register.html', error=REGISTER_INVALID_EMAIL)
+
+    if len(passw) < MIN_PWD_LEN:
+        return render_template('register.html', error=REGISTER_PWD_TOO_SHORT)
+
+    if passw != request.form.get('password_confirm'):
+        return render_template('register.html', error=REGISTER_PWD_DONT_MATCH)
+
+    hash_passw = bcrypt.hashpw(passw.encode('utf-8'), bcrypt.gensalt())
+
+    session[SESSION_TOKEN] = add_token(create_user(email, hash_passw))
+    return redirect(url_for('index'))
 
 
 @app.route('/signout')
