@@ -9,6 +9,9 @@ name = "pypi"
 
 flask = "*"
 "psycopg2-binary" = "*"
+bcrypt = "*"
+gunicorn = "*"
+meinheld = "*"
 
 
 [dev-packages]

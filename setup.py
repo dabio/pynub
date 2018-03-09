@@ -6,7 +6,7 @@ from setuptools import setup
 NAME = 'pinub'
 REQUIRES_PYTHON = '>=3.6.0'
 REQUIRED = [
-    'flask', 'psycopg2-binary'
+    'flask', 'psycopg2-binary', 'bcrypt'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
