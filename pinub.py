@@ -3,6 +3,7 @@ import os
 import psycopg2
 import psycopg2.extras
 import re
+import urllib.parse
 
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
@@ -16,22 +17,23 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'super-secret-key')
 SESSION_TOKEN = 'token'
 EMAIL_RE = '.+@.+\..+'
 MIN_PWD_LEN = 4
+DELETE_ME_COOKIE = 'deleteMe'
 
 # User Feeback
 SIGNIN_NO_ACCOUNT = 'Invalid Email or Password.'
 SIGNIN_WRONG_PASS = 'Invalid Email or Password.'
 
-REGISTER_ACCOUNT_EXISTS = (
-    'Account already exists. Would you like to sign in instead?'
-)
 REGISTER_INVALID_EMAIL = 'Invalid Email.'
 REGISTER_PWD_TOO_SHORT = 'Password is too short.'
 REGISTER_PWD_DONT_MATCH = 'Passwords do not match.'
+REGISTER_ACCOUNT_EXISTS = (
+    'Account already exists. Would you like to sign in instead?'
+)
+
 
 # -------
 # Helpers
 # -------
-
 
 def get_db():
     return g.get('_db', psycopg2.connect(
@@ -63,67 +65,86 @@ def modify_db(query, args=()):
     return res
 
 
+def delete_db(query, args=()):
+    db = get_db()
+    db.cursor().execute(query, args)
+    db.commit()
+
+
 def get_user_by_email(email):
     return query_db(
         'SELECT id, email, password, created_at FROM users WHERE email = %s',
-        [email], one=True)
+        (email, ), one=True)
 
 
 def get_user_by_token(token):
     return query_db((
         'SELECT u.id, u.email, u.created_at, l.active_at, l.token FROM users u'
         ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
-        ' LIMIT 1'), [token], one=True)
+        ' LIMIT 1'), (token, ), one=True)
 
 
 def create_user(email, password_hash):
     res = modify_db(
         'INSERT INTO users (email, password) VALUES (%s, %s) RETURNING id',
-        [email, password_hash])
+        (email, password_hash))
     return res['id']
 
 
 def refresh_token(token):
     modify_db((
         'UPDATE logins SET active_at = now() WHERE token = %s'
-        ' RETURNING active_at'), [token])
+        ' RETURNING active_at'), (token, ))
 
 
 def add_token(user_id):
     res = modify_db(
         'INSERT INTO logins (user_id) VALUES (%s) RETURNING token',
-        [user_id])
+        (user_id, ))
     return res['token']
 
 
 def get_link(url):
     return query_db(
-        'SELECT id FROM links WHERE url = %s LIMIT 1', [url], one=True)
+        'SELECT id FROM links WHERE url = %s LIMIT 1', (url, ), one=True)
 
 
 def create_link(url):
-    res = modify_db('INSERT INTO links (url) VALUES (%s) RETURNING id', [url])
+    res = modify_db(
+        'INSERT INTO links (url) VALUES (%s) RETURNING id', (url, ))
     return res['id']
 
 
 def get_link_for_user(link_id, user_id):
     return query_db((
         'SELECT created_at FROM user_links WHERE link_id = %s AND user_id = %s'
-        ' LIMIT 1'), [link_id, user_id], one=True)
+        ' LIMIT 1'), (link_id, user_id), one=True)
 
 
 def create_link_for_user(url, user_id):
-    link_id = get_link(url)
-    if link_id is None:
+    link = get_link(url)
+    if link is None:
         link_id = create_link(url)
+    else:
+        link_id = link['id']
 
     res = get_link_for_user(link_id, user_id)
     if res is None:
         res = modify_db((
             'INSERT INTO user_links (link_id, user_id) VALUES (%s, %s)'
-            ' RETURNING created_at'), link_id, user_id)
+            ' RETURNING created_at'), (link_id, user_id))
 
     return res
+
+
+def delete_link_for_user(link_id, user_id):
+    delete_db(
+        'DELETE FROM user_links WHERE user_id = %s AND link_id = %s',
+        (user_id, link_id))
+    delete_db((
+        'DELETE FROM links WHERE id = %s AND'
+        ' (SELECT count(link_id) FROM user_links WHERE link_id = %s) = 0'),
+        (link_id, link_id))
 
 
 # ----------
@@ -164,6 +185,20 @@ def prolong_session():
     session.permanent = True
 
 
+@app.before_request
+def delete_links():
+    if g.user is None:
+        return
+
+    cookie = request.cookies.get(DELETE_ME_COOKIE)
+    if cookie is None:
+        return
+
+    links = cookie.split(',')
+    for link_id in links:
+        delete_link_for_user(link_id, g.user['id'])
+
+
 @app.teardown_request
 def refresh_user_token(exception):
     if g.user is not None:
@@ -188,7 +223,7 @@ def index():
         'SELECT id, url, ul.created_at FROM links l'
         ' JOIN user_links ul ON l.id = ul.link_id AND ul.user_id = %s'
         ' ORDER BY ul.created_at DESC'),
-        [g.user['id']]))
+        (g.user['id'], )))
 
 
 @app.route('/signin')
@@ -199,7 +234,7 @@ def signin():
 
 @app.route('/signin', methods=['POST'])
 @public
-def do_signin():
+def post_signin():
     user = get_user_by_email(request.form.get('email'))
     if user is None:
         return render_template('signin.html', error=SIGNIN_NO_ACCOUNT)
@@ -221,7 +256,7 @@ def register():
 
 @app.route('/register', methods=['POST'])
 @public
-def do_register():
+def post_register():
     email = request.form.get('email')
     passw = request.form.get('password')
 
@@ -261,8 +296,18 @@ def profile():
 @private
 def link(url=''):
     if len(request.args) > 0:
-        url += '?' + urlencode(request.args)
-    return url
+        url = url + '?' + urlencode(request.args)
+    if not url.startswith('http'):
+        url = '//' + url
+
+    o = urllib.parse.urlparse(url, 'http')
+    # missing netloc - back to index
+    if o.netloc == '':
+        # ToDo: flash here
+        return redirect(url_for('index'))
+
+    create_link_for_user(urllib.parse.urlunparse(o), g.user['id'])
+    return redirect(url_for('index'))
 
 
 # --------
