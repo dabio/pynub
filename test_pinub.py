@@ -104,5 +104,11 @@ class PinubTestCase(unittest.TestCase):
         self.delete_user(REGISTER_TEST_EMAIL)
 
 
+class HelperTestCase(unittest.TestCase):
+
+    def test_timesince(self):
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()

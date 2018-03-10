@@ -10,7 +10,7 @@
     <li>
       <a href="{{ link.url }}">{{ link.url|lremove('http://')|lremove('https://') }}</a>
       <span>
-        <time datetime="{{ link.created_at }}">{{ link.created_at }}</time>
+        <time datetime="{{ link.created_at }}">{{ link.created_at|timesince }}</time>
         <a data-id="{{ link.id }}" class="delete">delete</a>
         <a data-id="{{ link.id }}" class="cancel">cancel</a>
       </span>
