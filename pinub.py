@@ -5,6 +5,7 @@ import psycopg2.extras
 import re
 import urllib.parse
 
+from datetime import datetime, timedelta
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
 from functools import wraps
@@ -328,4 +329,22 @@ def lremove(str, prefix):
     return str[len(prefix):] if str.startswith(prefix) else str
 
 
+def timesince(date):
+    diff = datetime.utcnow() - date
+
+    if diff / timedelta(days=1) > 1:
+        return date.strftime('%d.%m.%y %H:%M')
+
+    seconds = diff / timedelta(seconds=1)
+    # hours
+    if seconds >= 60 * 60:
+        return f"{seconds / 60 / 60:.0f}h ago"
+
+    if seconds >= 60:
+        return f"{seconds / 60:.0f}m ago"
+
+    return f"{seconds:.0f}s ago"
+
+
 app.jinja_env.filters['lremove'] = lremove
+app.jinja_env.filters['timesince'] = timesince
