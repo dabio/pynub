@@ -51,25 +51,14 @@ def init_db():
 
 
 def query_db(query, args=(), one=False):
-    cur = get_db().cursor()
-    cur.execute(query, args)
-    res = cur.fetchall()
-    return (res[0] if res else None) if one else res
-
-
-def modify_db(query, args=()):
     db = get_db()
     cur = db.cursor()
     cur.execute(query, args)
-    res = cur.fetchone()
-    db.commit()
-    return res
-
-
-def delete_db(query, args=()):
-    db = get_db()
-    db.cursor().execute(query, args)
-    db.commit()
+    if query.lower().startswith(('insert ', 'update ', 'delete ')):
+        db.commit()
+    if query.lower().startswith('delete '):
+        return None
+    return cur.fetchone() if one else cur.fetchall()
 
 
 def get_user_by_email(email):
@@ -86,22 +75,22 @@ def get_user_by_token(token):
 
 
 def create_user(email, password_hash):
-    res = modify_db(
+    res = query_db(
         'INSERT INTO users (email, password) VALUES (%s, %s) RETURNING id',
-        (email, password_hash))
+        (email, password_hash), one=True)
     return res['id']
 
 
 def refresh_token(token):
-    modify_db((
+    query_db((
         'UPDATE logins SET active_at = now() WHERE token = %s'
         ' RETURNING active_at'), (token, ))
 
 
 def add_token(user_id):
-    res = modify_db(
+    res = query_db(
         'INSERT INTO logins (user_id) VALUES (%s) RETURNING token',
-        (user_id, ))
+        (user_id, ), one=True)
     return res['token']
 
 
@@ -111,8 +100,8 @@ def get_link(url):
 
 
 def create_link(url):
-    res = modify_db(
-        'INSERT INTO links (url) VALUES (%s) RETURNING id', (url, ))
+    res = query_db(
+        'INSERT INTO links (url) VALUES (%s) RETURNING id', (url, ), one=True)
     return res['id']
 
 
@@ -131,18 +120,18 @@ def create_link_for_user(url, user_id):
 
     res = get_link_for_user(link_id, user_id)
     if res is None:
-        res = modify_db((
+        res = query_db((
             'INSERT INTO user_links (link_id, user_id) VALUES (%s, %s)'
-            ' RETURNING created_at'), (link_id, user_id))
+            ' RETURNING created_at'), (link_id, user_id), one=True)
 
     return res
 
 
 def delete_link_for_user(link_id, user_id):
-    delete_db(
+    query_db(
         'DELETE FROM user_links WHERE user_id = %s AND link_id = %s',
         (user_id, link_id))
-    delete_db((
+    query_db((
         'DELETE FROM links WHERE id = %s AND'
         ' (SELECT count(link_id) FROM user_links WHERE link_id = %s) = 0'),
         (link_id, link_id))
@@ -343,7 +332,7 @@ def timesince(date):
     if seconds >= 60:
         return f"{seconds / 60:.0f}m ago"
 
-    return f"{seconds:.0f}s ago"
+    return f"{abs(seconds):.0f}s ago"
 
 
 app.jinja_env.filters['lremove'] = lremove
