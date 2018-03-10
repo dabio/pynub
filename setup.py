@@ -5,7 +5,7 @@ from setuptools import setup
 
 NAME = 'pinub'
 REQUIRES_PYTHON = '>=3.6.0'
-REQUIRED = [
+REQUIRES = [
     'flask', 'psycopg2-binary', 'bcrypt', 'gunicorn'
 ]
 
@@ -16,9 +16,11 @@ with io.open(os.path.join(here, 'LICENSE'), encoding='utf-8') as f:
 
 setup(
     name=NAME,
-    py_modules='pinub',
+    author='Danilo Braband',
+    url='https://github.com/dabio/pinub',
+    py_modules=['pinub'],
     python_requires=REQUIRES_PYTHON,
     include_package_data=True,
-    install_required=REQUIRED,
+    install_requires=REQUIRES,
     license=license
 )
