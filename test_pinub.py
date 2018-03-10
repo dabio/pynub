@@ -31,7 +31,7 @@ class PinubTestCase(unittest.TestCase):
 
     def delete_user(self, email):
         with pinub.app.app_context():
-            pinub.delete_db('DELETE FROM users WHERE email = %s', (email, ))
+            pinub.query_db('DELETE FROM users WHERE email = %s', (email, ))
 
     # Tests
 

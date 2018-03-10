@@ -1,1 +1,2 @@
-include README.rst LICENSE
+include README.rst LICENSE schema.sql
+recursive-include static templates
