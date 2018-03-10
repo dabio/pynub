@@ -1,1 +1,14 @@
-profile
+{% extends "_layout.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block body %}
+  <form method="post" class="signin">
+    <fieldset>
+      <legend>Profile</legend>
+    </fieldset>
+    <div>
+      <button type="submit">Save</button>
+    </div>
+  </form>
+{% endblock %}
