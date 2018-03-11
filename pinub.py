@@ -9,7 +9,6 @@ import urllib.parse
 from datetime import datetime, timedelta
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
-from functools import wraps
 from raven.contrib.flask import Sentry
 from urllib.parse import urlencode
 
@@ -150,7 +149,7 @@ def delete_link_for_user(link_id, user_id):
 # ----------
 
 def private(f):
-    @wraps(f)
+    @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         if g.user is None:
             return redirect(url_for('signin'))
@@ -159,7 +158,7 @@ def private(f):
 
 
 def public(f):
-    @wraps(f)
+    @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         if g.user is not None:
             return redirect(url_for('index'))
