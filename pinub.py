@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
 from functools import wraps
+from raven.contrib.flask import Sentry
 from urllib.parse import urlencode
 
 app = Flask(__name__)
@@ -30,6 +31,12 @@ REGISTER_PWD_DONT_MATCH = 'Passwords do not match.'
 REGISTER_ACCOUNT_EXISTS = (
     'Account already exists. Would you like to sign in instead?'
 )
+
+
+# Send app errors to Sentry
+sentry_dsn = os.getenv('SENTRY_DSN')
+if sentry_dsn is not None:
+    Sentry(app, dsn=sentry_dsn)
 
 
 # -------
