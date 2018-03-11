@@ -1,4 +1,5 @@
 import bcrypt
+import functools
 import os
 import psycopg2
 import psycopg2.extras
@@ -9,6 +10,7 @@ from datetime import datetime, timedelta
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
 from functools import wraps
+from raven.contrib.flask import Sentry
 from urllib.parse import urlencode
 
 app = Flask(__name__)
@@ -30,6 +32,12 @@ REGISTER_PWD_DONT_MATCH = 'Passwords do not match.'
 REGISTER_ACCOUNT_EXISTS = (
     'Account already exists. Would you like to sign in instead?'
 )
+
+
+# Send app errors to Sentry
+sentry_dsn = os.getenv('SENTRY_DSN')
+if sentry_dsn is not None:
+    Sentry(app, dsn=sentry_dsn)
 
 
 # -------
@@ -145,7 +153,7 @@ def private(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if g.user is None:
-            return redirect(url_for('signin', next=request.url))
+            return redirect(url_for('signin'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -162,6 +170,11 @@ def public(f):
 # -------
 # Signals
 # -------
+
+@app.before_request
+def track_start_time():
+    request.start_time = datetime.utcnow()
+
 
 @app.before_request
 def preload_user():
@@ -187,6 +200,13 @@ def delete_links():
     links = cookie.split(',')
     for link_id in links:
         delete_link_for_user(link_id, g.user['id'])
+
+
+@app.after_request
+def show_processed_time(response):
+    diff = (datetime.utcnow() - request.start_time).total_seconds()
+    response.headers['X-Processed-Time'] = f"{diff * 1000:.2f}ms"
+    return response
 
 
 @app.teardown_request
@@ -218,6 +238,7 @@ def index():
 
 @app.route('/signin')
 @public
+@functools.lru_cache(512)
 def signin():
     return render_template('signin.html')
 
@@ -239,6 +260,7 @@ def post_signin():
 
 
 @app.route('/register')
+@functools.lru_cache(512)
 @public
 def register():
     return render_template('register.html')
