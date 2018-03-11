@@ -171,6 +171,11 @@ def public(f):
 # -------
 
 @app.before_request
+def track_start_time():
+    request.start_time = datetime.utcnow()
+
+
+@app.before_request
 def preload_user():
     g.user = None
     if SESSION_TOKEN in session:
@@ -194,6 +199,13 @@ def delete_links():
     links = cookie.split(',')
     for link_id in links:
         delete_link_for_user(link_id, g.user['id'])
+
+
+@app.after_request
+def show_processed_time(response):
+    diff = (datetime.utcnow() - request.start_time).total_seconds()
+    response.headers['X-Processed-Time'] = f"{diff * 1000:.2f}ms"
+    return response
 
 
 @app.teardown_request
