@@ -1,4 +1,5 @@
 import bcrypt
+import functools
 import os
 import psycopg2
 import psycopg2.extras
@@ -152,7 +153,7 @@ def private(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if g.user is None:
-            return redirect(url_for('signin', next=request.url))
+            return redirect(url_for('signin'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -237,6 +238,7 @@ def index():
 
 @app.route('/signin')
 @public
+@functools.lru_cache(512)
 def signin():
     return render_template('signin.html')
 
@@ -258,6 +260,7 @@ def post_signin():
 
 
 @app.route('/register')
+@functools.lru_cache(512)
 @public
 def register():
     return render_template('register.html')
