@@ -2,12 +2,17 @@
 <html lang="en">
   <title>{% block title %}{% endblock %} - pinub.com</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="https://unpkg.com/tachyons@4.9.1/css/tachyons.min.css">
   <script src="{{ url_for('static', filename='basic.js') }}" defer></script>
-  <body>
+  {% block style %}{% endblock %}
+  <body class="sans-serif black-80 mw7 center mb5 ph3">
 
-    <main>
 {% block body %}{% endblock %}
-    </main>
+
   </body>
+  <style>
+    button {
+        cursor: pointer;
+    }
+  </style>
 </html>

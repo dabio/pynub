@@ -4,7 +4,7 @@
   const
     cookieName = "deleteMe",
     cookieDays = 14,
-    dimClassName = 'dim';
+    dimClassName = 'o-40';
 
   var
     dimElement = function(el) {

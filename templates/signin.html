@@ -3,24 +3,25 @@
 {% block title %}Sign In{% endblock %}
 
 {% block body %}
-  <form method="post" class="signin">
-    <fieldset>
-      <legend>Sign In</legend>
-      {% if error %}
-        <div class="error">{{ error }}</div>
-      {% endif %}
-      <div>
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email"{% if error %} class="error"{% endif %} placeholder="email@example.com" value="{{ request.form.email }}" required{% if not request.form.email %} autofocus{% endif %}>
-      </div>
+  <form method="post" class="pa4 center measure">
+    <h2 class="f2">Sign In</h2>
 
-      <div>
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password"{% if error %} class="error"{% endif %} placeholder="password" required{% if request.form.email %} autofocus{% endif %}>
-      </div>
-    </fieldset>
+    {% if error %}
+      <div class="dark-red mb3">{{ error }}</div>
+    {% endif %}
+
     <div>
-      <button type="submit">Sign In</button>
+      <label class="f6 b db mb2" for="email">Email</label>
+      <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="email" name="email" type="email"{% if error %} class="error"{% endif %} placeholder="email@example.com" value="{{ request.form.email }}" required{% if not request.form.email %} autofocus{% endif %}>
+    </div>
+
+    <div>
+      <label class="f6 b db mb2" for="password">Password</label>
+      <input class="input-reset ba b--black-20 pa2 db w-100 mb4" id="password" name="password" type="password"{% if error %} class="error"{% endif %} placeholder="password" required{% if request.form.email %} autofocus{% endif %}>
+    </div>
+
+    <div>
+      <button class="f6 dim ph3 pv2 dib white bg-navy bn" type="submit">Sign In</button>
     </div>
   </form>
 {% endblock %}

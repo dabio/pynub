@@ -2,19 +2,26 @@
 
 {% block title %}Your Links{% endblock %}
 
-{% block body %}
-  <h2>Your Links</h2>
+{% block style %}
+  <style>
+    time::after {
+      content: ' · '
+    }
+  </style>
+{% endblock %}
 
-  <ul class="links">
-    {% for link in links %}
-    <li>
-      <a href="{{ link.url }}">{{ link.url|lremove('http://')|lremove('https://') }}</a>
-      <span>
-        <time datetime="{{ link.created_at }}">{{ link.created_at|timesince }}</time>
-        <a data-id="{{ link.id }}" class="delete">delete</a>
-        <a data-id="{{ link.id }}" class="cancel">cancel</a>
-      </span>
-    </li>
-    {% endfor %}
-  </ul>
+{% block body %}
+  <h2 class="f2 pt4">Your Links</h2>
+
+  {% for link in links %}
+    <article class="w-100 mb3">
+      <a class="black link" href="{{ link.url }}">{{ link.url|lremove('http://')|lremove('https://') }}</a>
+      <div>
+        <time class="f6 black-30" datetime="{{ link.created_at }}">{{ link.created_at|timesince }}</time>
+        <a class="f6 pointer black-30 delete" data-id="{{ link.id }}">delete</a>
+        <a class="f6 pointer dn cancel" data-id="{{ link.id }}">cancel</a>
+      </div>
+    </article>
+  {% endfor %}
+
 {% endblock %}
