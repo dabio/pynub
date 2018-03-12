@@ -302,6 +302,12 @@ def profile():
     return render_template('profile.html')
 
 
+@app.route('/profile', methods=['POST'])
+@private
+def post_profile():
+    return render_template('profile.html')
+
+
 @app.route('/<path:url>')
 @private
 def link(url=''):
