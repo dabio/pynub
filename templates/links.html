@@ -18,8 +18,8 @@
       <a class="black link" href="{{ link.url }}">{{ link.url|lremove('http://')|lremove('https://') }}</a>
       <div>
         <time class="f6 black-30" datetime="{{ link.created_at }}">{{ link.created_at|timesince }}</time>
-        <a class="f6 black-30 delete" data-id="{{ link.id }}">delete</a>
-        <a class="f6 dn cancel" data-id="{{ link.id }}">cancel</a>
+        <a class="f6 pointer black-30 delete" data-id="{{ link.id }}">delete</a>
+        <a class="f6 pointer dn cancel" data-id="{{ link.id }}">cancel</a>
       </div>
     </article>
   {% endfor %}
