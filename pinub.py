@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from flask import Flask, request, render_template, g, session, \
     redirect, url_for
 from raven.contrib.flask import Sentry
-from urllib.parse import urlencode
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'super-secret-key')
@@ -307,7 +306,7 @@ def profile():
 @private
 def link(url=''):
     if len(request.args) > 0:
-        url = url + '?' + urlencode(request.args)
+        url = url + '?' + urllib.parse.urlencode(request.args)
     if not url.startswith('http'):
         url = '//' + url
 
