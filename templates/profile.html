@@ -7,6 +7,9 @@
 
     <form class="fl w-100 w-50-ns ph3" method="post">
       <h3 class="f4 mt0">Update Email</h3>
+      {% if error_email %}
+        <div class="dark-red mb3">{{ error_email }}</div>
+      {% endif %}
       <div>
         <label class="f6 b db mb2" for="email">Email</label>
         <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="email" name="email" type="email" placeholder="email@example.com" value="{{ request.form.email or g.user.email }}" required>
@@ -19,7 +22,9 @@
 
     <form class="fl w-100 w-50-ns ph3 mt4 mt0-ns" method="post">
       <h3 class="f4 mt0">Update Password</h3>
-
+      {% if error_pass %}
+        <div class="dark-red mb3">{{ error_pass }}</div>
+      {% endif %}
       <div>
         <label class="f6 b db mb2" for="current_password">Current Password</label>
         <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="current_password" name="current_password" type="password" value="{{ request.form.current_password }}" required>
@@ -31,8 +36,8 @@
       </div>
 
       <div>
-        <label class="f6 b db mb2" for="confirm_password">Confirm New Password</label>
-        <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="confirm_password" name="confirm_password" type="password" value="{{ request.form.confirm_password }}" required>
+        <label class="f6 b db mb2" for="password_confirm">Confirm New Password</label>
+        <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="password_confirm" name="password_confirm" type="password" value="{{ request.form.password_confirm }}" required>
       </div>
 
       <div>

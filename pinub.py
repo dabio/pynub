@@ -31,6 +31,12 @@ REGISTER_ACCOUNT_EXISTS = (
     'Account already exists. Would you like to sign in instead?'
 )
 
+PROFILE_ACCOUNT_EXISTS = 'An account linked to this email is already present.'
+PROFILE_INVALID_EMAIL = 'Invalid Email.'
+PROFILE_WRONG_PASS = 'Invalid Password.'
+PROFILE_PWD_TOO_SHORT = 'Password is too short.'
+PROFILE_PWD_DONT_MATCH = 'Passwords do not match.'
+
 
 # Send app errors to Sentry
 sentry_dsn = os.getenv('SENTRY_DSN')
@@ -75,8 +81,8 @@ def get_user_by_email(email):
 
 def get_user_by_token(token):
     return query_db((
-        'SELECT u.id, u.email, u.created_at, l.active_at, l.token FROM users u'
-        ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
+        'SELECT id, email, password, u.created_at, active_at, token'
+        ' FROM users u JOIN logins l ON u.id = l.user_id AND l.token = %s'
         ' LIMIT 1'), (token, ), one=True)
 
 
@@ -85,6 +91,18 @@ def create_user(email, password_hash):
         'INSERT INTO users (email, password) VALUES (%s, %s) RETURNING id',
         (email, password_hash), one=True)
     return res['id']
+
+
+def update_user_email(id, email):
+    return query_db(
+        'UPDATE users SET email = %s WHERE id = %s RETURNING id', (
+            email, id))
+
+
+def update_user_password(id, password_hash):
+    return query_db(
+        'UPDATE users SET password = %s WHERE id = %s RETURNING id', (
+            password_hash, id))
 
 
 def refresh_token(token):
@@ -305,7 +323,39 @@ def profile():
 @app.route('/profile', methods=['POST'])
 @private
 def post_profile():
-    return render_template('profile.html')
+    email = request.form.get('email')
+    if email is not None:
+        # check if email changes
+        if email == g.user['email']:
+            return render_template('profile.html')
+        # check if email is already in db for a different user
+        user = get_user_by_email(email)
+        if user is not None:
+            return render_template(
+                'profile.html', error_email=PROFILE_ACCOUNT_EXISTS)
+        # check if email is valid
+        if re.search(EMAIL_RE, email) is None:
+            return render_template('profile.html', error_email=PROFILE_INVALID_EMAIL)
+        # store email
+        # ToDo: flash here
+        update_user_email(g.user['id'], email)
+        return redirect(url_for('profile'))
+
+    if not bcrypt.checkpw(
+            request.form.get('current_password').encode('utf-8'),
+            g.user['password'].encode('utf-8')):
+        return render_template('profile.html', error_pass=PROFILE_WRONG_PASS)
+
+    new_passw = request.form.get('password')
+    if len(new_passw) < MIN_PWD_LEN:
+        return render_template('profile.html', error_pass=PROFILE_PWD_TOO_SHORT)
+
+    if new_passw != request.form.get('password_confirm'):
+        return render_template('profile.html', error_pass=PROFILE_PWD_DONT_MATCH)
+
+    hash_passw = bcrypt.hashpw(new_passw.encode('utf-8'), bcrypt.gensalt())
+    update_user_password(g.user['id'], hash_passw)
+    return redirect(url_for('profile'))
 
 
 @app.route('/<path:url>')
