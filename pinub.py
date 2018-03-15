@@ -31,8 +31,10 @@ REGISTER_ACCOUNT_EXISTS = (
     'Account already exists. Would you like to sign in instead?'
 )
 
-PROFILE_INVALID_EMAIL = 'Passwords do not match.'
-PROFILE_WRONG_PASSWORD = 'Invalid Password.'
+PROFILE_INVALID_EMAIL = 'Invalid Email.'
+PROFILE_WRONG_PASSWORD = 'Password is not correct.'
+PROFILE_PWD_TOO_SHORT = 'Password is too short.'
+PROFILE_ACCOUNT_EXISTS = 'An account linked to this email exists already.'
 PROFILE_PWD_DONT_MATCH = 'Passwords do not match.'
 
 
@@ -323,15 +325,27 @@ def profile():
 @private
 def post_profile():
     if not verify(request.form.get('password'), g.user['password']):
-        render_template('profile.html', error=PROFILE_WRONG_PASSWORD)
+        return render_template('profile.html', error=PROFILE_WRONG_PASSWORD)
 
-    passw = request.form.get('password')
+    email = request.form.get('email')
+    if re.search(EMAIL_RE, email) is None:
+        return render_template('profile.html', error=PROFILE_INVALID_EMAIL)
+
+    test_user = get_user_by_email(email)
+    if test_user is not None and test_user['id'] != g.user['id']:
+        return render_template('profile.html', error=PROFILE_ACCOUNT_EXISTS)
+
+    passw = request.form.get('new_password')
+    if len(passw) < MIN_PWD_LEN:
+        return render_template('profile.html', error=REGISTER_PWD_TOO_SHORT)
+
+    # check if password is valid
+    # check if passwords match
+    # store email an new password
 
     # curr = request.form.get('current_password')
 
-    if request.form.get('current_password') == g.user['password']:
-        # if verify(passw, g.user['password']):
-        update_user_password(g.user['id'], hash(passw))
+    # update_user_password(g.user['id'], hash(passw))
 
     return render_template('profile.html')
 

@@ -5,6 +5,10 @@
 {% block body %}
   <form class="pa4 center measure" method="post">
     <h2 class="f2">Profile</h2>
+    {% if error %}
+      <div class="dark-red mb3">{{ error }}</div>
+    {% endif %}
+
     <div class="bb b--black-10 mb4 pb3">
       <label class="f6 b db mb2" for="email">Email <span class="normal black-60">(required)</span></label>
       <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="email" name="email" type="email" placeholder="email@example.com" value="{{ request.form.email or g.user.email }}" required>
@@ -12,12 +16,12 @@
 
     <div>
       <label class="f6 b db mb2" for="new_password">New Password <span class="normal black-60">(optional)</span></label>
-      <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="new_password" name="new_password" type="password" required>
+      <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="new_password" name="new_password" type="password">
     </div>
 
     <div class="bb b--black-10 mb4 pb3">
       <label class="f6 b db mb2" for="confirm_password">Confirm New Password</label>
-      <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="confirm_password" name="confirm_password" type="password" required>
+      <input class="input-reset ba b--black-20 pa2 db w-100 mb3" id="confirm_password" name="confirm_password" type="password">
     </div>
 
     <div class="mb4">
@@ -27,7 +31,7 @@
     </div>
 
     <div>
-      <button class="f6 dim ph3 pv2 dib white bg-navy bn" type="submit">Update Settings</button>
+      <button class="f6 dim ph3 pv2 dib white bg-navy bn" type="submit">Update Profile</button>
     </div>
 
   </form>
