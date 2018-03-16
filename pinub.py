@@ -100,6 +100,13 @@ def update_user_password(user_id, password_hash):
     return res['id']
 
 
+def update_user_email(user_id, email):
+    res = query_db(
+        'UPDATE users SET email = %s WHERE id = %s RETURNING id',
+        (email, user_id), one=True)
+    return res
+
+
 def refresh_token(token):
     query_db((
         'UPDATE logins SET active_at = now() WHERE token = %s'
@@ -336,18 +343,19 @@ def post_profile():
         return render_template('profile.html', error=PROFILE_ACCOUNT_EXISTS)
 
     passw = request.form.get('new_password')
-    if len(passw) < MIN_PWD_LEN:
-        return render_template('profile.html', error=REGISTER_PWD_TOO_SHORT)
+    if len(passw) > 0:
+        if len(passw) < MIN_PWD_LEN:
+            return render_template('profile.html', error=PROFILE_PWD_TOO_SHORT)
 
-    # check if password is valid
-    # check if passwords match
-    # store email an new password
+        if passw != request.form.get('confirm_password'):
+            return render_template(
+                'profile.html', error=PROFILE_PWD_DONT_MATCH)
 
-    # curr = request.form.get('current_password')
+        update_user_password(g.user['id'], hash(passw))
 
-    # update_user_password(g.user['id'], hash(passw))
-
-    return render_template('profile.html')
+    update_user_email(g.user['id'], email)
+    # ToDo: flash here
+    return redirect(url_for('profile'))
 
 
 @app.route('/<path:url>')
