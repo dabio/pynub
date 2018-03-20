@@ -1,4 +1,5 @@
 import bcrypt
+import click
 import functools
 import os
 import psycopg2
@@ -384,6 +385,12 @@ def link(url=''):
 def initdb_command():
     init_db()
     print('Initialized the database.')
+
+
+@app.cli.command('hash')
+@click.argument('password')
+def hash_command(password):
+    print(hash(password))
 
 
 # -------
