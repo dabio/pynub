@@ -7,6 +7,18 @@
   {% block style %}{% endblock %}
   <body class="sans-serif black-80 mw7 center mb5">
 
+{% if g.user %}
+<header class="w-100 pa3 pv4-ns">
+  <nav class="flex justify-between f6 f6 f5-ns">
+    <a class="flex items-center link dim black b dib" href="/">Pinub</a>
+    <div class="flex items-center">
+      <a class="link dim black dib mr3" href="/profile">Profile</a>
+      <a class="link dim black dib" href="/signout">Sign Out</a>
+    </div>
+  </nav>
+</header>
+{% endif %}
+
 {% block body %}{% endblock %}
 
   </body>
