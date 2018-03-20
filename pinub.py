@@ -1,4 +1,5 @@
 import bcrypt
+import click
 import functools
 import os
 import psycopg2
@@ -30,6 +31,12 @@ REGISTER_PWD_DONT_MATCH = 'Passwords do not match.'
 REGISTER_ACCOUNT_EXISTS = (
     'Account already exists. Would you like to sign in instead?'
 )
+
+PROFILE_INVALID_EMAIL = 'Invalid Email.'
+PROFILE_WRONG_PASSWORD = 'Password is not correct.'
+PROFILE_PWD_TOO_SHORT = 'Password is too short.'
+PROFILE_ACCOUNT_EXISTS = 'An account linked to this email exists already.'
+PROFILE_PWD_DONT_MATCH = 'Passwords do not match.'
 
 
 # Send app errors to Sentry
@@ -75,8 +82,8 @@ def get_user_by_email(email):
 
 def get_user_by_token(token):
     return query_db((
-        'SELECT u.id, u.email, u.created_at, l.active_at, l.token FROM users u'
-        ' JOIN logins l ON u.id = l.user_id AND l.token = %s'
+        'SELECT id, email, password, u.created_at, active_at, token'
+        ' FROM users u JOIN logins l ON u.id = l.user_id AND l.token = %s'
         ' LIMIT 1'), (token, ), one=True)
 
 
@@ -85,6 +92,20 @@ def create_user(email, password_hash):
         'INSERT INTO users (email, password) VALUES (%s, %s) RETURNING id',
         (email, password_hash), one=True)
     return res['id']
+
+
+def update_user_password(user_id, password_hash):
+    res = query_db(
+        'UPDATE users SET password = %s WHERE id = %s RETURNING id',
+        (password_hash, user_id), one=True)
+    return res['id']
+
+
+def update_user_email(user_id, email):
+    res = query_db(
+        'UPDATE users SET email = %s WHERE id = %s RETURNING id',
+        (email, user_id), one=True)
+    return res
 
 
 def refresh_token(token):
@@ -141,6 +162,16 @@ def delete_link_for_user(link_id, user_id):
         'DELETE FROM links WHERE id = %s AND'
         ' (SELECT count(link_id) FROM user_links WHERE link_id = %s) = 0'),
         (link_id, link_id))
+
+
+def hash(password):
+    return bcrypt.hashpw(
+        password.encode('utf-8'), bcrypt.gensalt(10, b"2a")).decode('utf-8')
+
+
+def verify(password, hash):
+    return bcrypt.checkpw(
+        password.encode('utf-8'), hash.encode('utf-8'))
 
 
 # ----------
@@ -248,9 +279,7 @@ def post_signin():
     if user is None:
         return render_template('signin.html', error=SIGNIN_NO_ACCOUNT)
 
-    if not bcrypt.checkpw(
-            request.form.get('password').encode('utf-8'),
-            user['password'].encode('utf-8')):
+    if not verify(request.form.get('password'), user['password']):
         return render_template('signin.html', error=SIGNIN_WRONG_PASS)
 
     session[SESSION_TOKEN] = add_token(user['id'])
@@ -283,9 +312,7 @@ def post_register():
     if passw != request.form.get('password_confirm'):
         return render_template('register.html', error=REGISTER_PWD_DONT_MATCH)
 
-    hash_passw = bcrypt.hashpw(passw.encode('utf-8'), bcrypt.gensalt())
-
-    session[SESSION_TOKEN] = add_token(create_user(email, hash_passw))
+    session[SESSION_TOKEN] = add_token(create_user(email, hash(passw)))
     return redirect(url_for('index'))
 
 
@@ -300,6 +327,36 @@ def signout():
 @private
 def profile():
     return render_template('profile.html')
+
+
+@app.route('/profile', methods=['POST'])
+@private
+def post_profile():
+    if not verify(request.form.get('password'), g.user['password']):
+        return render_template('profile.html', error=PROFILE_WRONG_PASSWORD)
+
+    email = request.form.get('email')
+    if re.search(EMAIL_RE, email) is None:
+        return render_template('profile.html', error=PROFILE_INVALID_EMAIL)
+
+    test_user = get_user_by_email(email)
+    if test_user is not None and test_user['id'] != g.user['id']:
+        return render_template('profile.html', error=PROFILE_ACCOUNT_EXISTS)
+
+    passw = request.form.get('new_password')
+    if len(passw) > 0:
+        if len(passw) < MIN_PWD_LEN:
+            return render_template('profile.html', error=PROFILE_PWD_TOO_SHORT)
+
+        if passw != request.form.get('confirm_password'):
+            return render_template(
+                'profile.html', error=PROFILE_PWD_DONT_MATCH)
+
+        update_user_password(g.user['id'], hash(passw))
+
+    update_user_email(g.user['id'], email)
+    # ToDo: flash here
+    return redirect(url_for('profile'))
 
 
 @app.route('/<path:url>')
@@ -328,6 +385,12 @@ def link(url=''):
 def initdb_command():
     init_db()
     print('Initialized the database.')
+
+
+@app.cli.command('hash')
+@click.argument('password')
+def hash_command(password):
+    print(hash(password))
 
 
 # -------
