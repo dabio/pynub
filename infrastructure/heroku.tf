@@ -21,3 +21,8 @@ resource "heroku_domain" "www_pinub_com" {
   app      = "${heroku_app.pinub.name}"
   hostname = "www.${var.domain}"
 }
+
+resource "heroku_domain" "wildcard_pinub_com" {
+  app      = "${heroku_app.pinub.name}"
+  hostname = "*.${var.domain}"
+}

@@ -1,2 +1,12 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+
+#  Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# .tfvars files
+*.tfvars

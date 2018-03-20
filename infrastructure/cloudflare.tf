@@ -21,3 +21,11 @@ resource "cloudflare_record" "www_pinub_com" {
   type    = "CNAME"
   proxied = true
 }
+
+resource "cloudflare_record" "wildcard_pinub_com" {
+  domain  = "${var.domain}"
+  name    = "*"
+  value   = "${heroku_domain.wildcard_pinub_com.cname}"
+  type    = "CNAME"
+  proxied = false
+}
