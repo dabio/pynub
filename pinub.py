@@ -9,7 +9,7 @@ import urllib.parse
 
 from datetime import datetime, timedelta
 from flask import Flask, request, render_template, g, session, \
-    redirect, url_for
+    redirect, url_for, flash
 from raven.contrib.flask import Sentry
 
 app = Flask(__name__)
@@ -37,6 +37,7 @@ PROFILE_WRONG_PASSWORD = 'Password is not correct.'
 PROFILE_PWD_TOO_SHORT = 'Password is too short.'
 PROFILE_ACCOUNT_EXISTS = 'An account linked to this email exists already.'
 PROFILE_PWD_DONT_MATCH = 'Passwords do not match.'
+PROFILE_SUCCESS_UPDATE = 'User profile successfully updated.'
 
 
 # Send app errors to Sentry
@@ -355,7 +356,7 @@ def post_profile():
         update_user_password(g.user['id'], hash(passw))
 
     update_user_email(g.user['id'], email)
-    # ToDo: flash here
+    flash(PROFILE_SUCCESS_UPDATE, 'info')
     return redirect(url_for('profile'))
 
 

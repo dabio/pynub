@@ -19,6 +19,12 @@
 </header>
 {% endif %}
 
+{% for info in get_flashed_messages(category_filter=['info']) %}
+<div class="bg-lightest-blue pa4  navy">
+  <span class="lh-title ml3">{{ info }}</span>
+</div>
+{% endfor %}
+
 {% block body %}{% endblock %}
 
   </body>
