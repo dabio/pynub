@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-  <title>{% block title %}{% endblock %} - pinub.com</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://unpkg.com/tachyons@4.9.1/css/tachyons.min.css">
-  <script src="{{ url_for('static', filename='basic.js') }}" defer></script>
-  {% block style %}{% endblock %}
-  <body class="sans-serif black-80 mw7 center mb5">
+<title>{% block title %}{% endblock %} - pinub.com</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/tachyons@4.9.1/css/tachyons.min.css">
+<script src="{{ url_for('static', filename='basic.js') }}" defer></script>
+<body class="sans-serif black-80 mw7 center mb5">
 
 {% if g.user %}
 <header class="w-100 pa3 pv4-ns">
@@ -19,10 +18,21 @@
 </header>
 {% endif %}
 
+{% block flash %}
+  {% for info in get_flashed_messages(category_filter=['info']) %}
+  <div class="bg-lightest-blue f6 pa3 navy">
+    <span class="lh-title">{{ info }}</span>
+  </div>
+  {% endfor %}
+{% endblock %}
+
 {% block body %}{% endblock %}
 
-  </body>
+</body>
   <style>
+    time::after {
+      content: ' · '
+    }
     button {
         cursor: pointer;
     }
