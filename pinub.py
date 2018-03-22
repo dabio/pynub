@@ -32,6 +32,8 @@ REGISTER_ACCOUNT_EXISTS = (
     'Account already exists. Would you like to sign in instead?'
 )
 
+LINKS_NEW_LINK = 'Link added to your list.'
+
 PROFILE_INVALID_EMAIL = 'Invalid Email.'
 PROFILE_WRONG_PASSWORD = 'Password is not correct.'
 PROFILE_PWD_TOO_SHORT = 'Password is too short.'
@@ -375,6 +377,7 @@ def link(url=''):
         return redirect(url_for('index'))
 
     create_link_for_user(urllib.parse.urlunparse(o), g.user['id'])
+    flash(LINKS_NEW_LINK, 'info')
     return redirect(url_for('index'))
 
 
