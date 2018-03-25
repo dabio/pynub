@@ -9,7 +9,7 @@ import urllib.parse
 
 from datetime import datetime, timedelta
 from flask import Flask, request, render_template, g, session, \
-    redirect, url_for, flash
+    redirect, url_for, flash, abort
 from raven.contrib.flask import Sentry
 
 app = Flask(__name__)
@@ -20,6 +20,15 @@ SESSION_TOKEN = 'token'
 EMAIL_RE = '.+@.+\..+'
 MIN_PWD_LEN = 4
 DELETE_ME_COOKIE = 'deleteMe'
+IGNORE_ASSETS = (
+    'apple-touch-icon-152x152-precomposed.png',
+    'apple-touch-icon-152x152.png',
+    'apple-touch-icon-120x120-precomposed.png',
+    'apple-touch-icon-120x120.png',
+    'apple-touch-icon-precomposed.png',
+    'apple-touch-icon.png',
+    'favicon.ico',
+)
 
 # User Feeback
 SIGNIN_NO_ACCOUNT = 'Invalid Email or Password.'
@@ -365,6 +374,10 @@ def post_profile():
 @app.route('/<path:url>')
 @private
 def link(url=''):
+    # ignore asset files
+    if url in IGNORE_ASSETS:
+        abort(404)
+
     if len(request.args) > 0:
         url = url + '?' + urllib.parse.urlencode(request.args)
     if not url.startswith('http'):
