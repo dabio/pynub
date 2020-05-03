@@ -10,3 +10,6 @@ __pycache__/
 
 # .tfvars files
 *.tfvars
+
+# direnv
+.direnv/
