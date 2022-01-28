@@ -1,0 +1,10 @@
+.direnv/
+.envrc
+.git/
+.gitignore
+Dockerfile
+Procfile
+README.rst
+infrastructure/
+schema.sql
+test_*
