@@ -2,10 +2,10 @@ import bcrypt
 import click
 import functools
 import os
-import psycopg2
-import psycopg2.extras
 import re
+import sqlite3
 import urllib.parse
+import uuid
 
 from datetime import datetime, timedelta
 from flask import (
@@ -59,24 +59,15 @@ PROFILE_PWD_DONT_MATCH = "Passwords do not match."
 PROFILE_SUCCESS_UPDATE = "User profile successfully updated."
 
 
-# Send app errors to Sentry
-sentry_dsn = os.getenv("SENTRY_DSN")
-if sentry_dsn is not None:
-    Sentry(app, dsn=sentry_dsn)
-
-
 # -------
 # Helpers
 # -------
 
 
 def get_db():
-    return g.get(
-        "_db",
-        psycopg2.connect(
-            dsn=os.getenv("DATABASE_URL"), cursor_factory=psycopg2.extras.DictCursor
-        ),
-    )
+    conn = sqlite3.connect("pinub.db", isolation_level=None)
+    conn.row_factory = sqlite3.Row
+    return g.get("_db", conn)
 
 
 def init_db():
@@ -99,7 +90,7 @@ def query_db(query, args=(), one=False):
 
 def get_user_by_email(email):
     return query_db(
-        "SELECT id, email, password, created_at FROM users WHERE email = %s",
+        "SELECT id, email, password, created_at FROM users WHERE email = ?",
         (email,),
         one=True,
     )
@@ -109,7 +100,7 @@ def get_user_by_token(token):
     return query_db(
         (
             "SELECT id, email, password, u.created_at, active_at, token"
-            " FROM users u JOIN logins l ON u.id = l.user_id AND l.token = %s"
+            " FROM users u JOIN logins l ON u.id = l.user_id AND l.token = ?"
             " LIMIT 1"
         ),
         (token,),
@@ -119,7 +110,7 @@ def get_user_by_token(token):
 
 def create_user(email, password_hash):
     res = query_db(
-        "INSERT INTO users (email, password) VALUES (%s, %s) RETURNING id",
+        "INSERT INTO users (email, password) VALUES (?, ?) RETURNING id",
         (email, password_hash),
         one=True,
     )
@@ -128,7 +119,7 @@ def create_user(email, password_hash):
 
 def update_user_password(user_id, password_hash):
     res = query_db(
-        "UPDATE users SET password = %s WHERE id = %s RETURNING id",
+        "UPDATE users SET password = ? WHERE id = ? RETURNING id",
         (password_hash, user_id),
         one=True,
     )
@@ -137,7 +128,7 @@ def update_user_password(user_id, password_hash):
 
 def update_user_email(user_id, email):
     res = query_db(
-        "UPDATE users SET email = %s WHERE id = %s RETURNING id",
+        "UPDATE users SET email = ? WHERE id = ? RETURNING id",
         (email, user_id),
         one=True,
     )
@@ -146,31 +137,33 @@ def update_user_email(user_id, email):
 
 def refresh_token(token):
     query_db(
-        ("UPDATE logins SET active_at = now() WHERE token = %s" " RETURNING active_at"),
+        "UPDATE logins SET active_at = datetime('now') WHERE token = ? RETURNING active_at",
         (token,),
     )
 
 
 def add_token(user_id):
     res = query_db(
-        "INSERT INTO logins (user_id) VALUES (%s) RETURNING token", (user_id,), one=True
+        "INSERT INTO logins (token, user_id) VALUES (?, ?) RETURNING token",
+        (str(uuid.uuid4()), user_id),
+        one=True,
     )
     return res["token"]
 
 
 def get_link(url):
-    return query_db("SELECT id FROM links WHERE url = %s LIMIT 1", (url,), one=True)
+    return query_db("SELECT id FROM links WHERE url = ? LIMIT 1", (url,), one=True)
 
 
 def create_link(url):
-    res = query_db("INSERT INTO links (url) VALUES (%s) RETURNING id", (url,), one=True)
+    res = query_db("INSERT INTO links (url) VALUES (?) RETURNING id", (url,), one=True)
     return res["id"]
 
 
 def get_link_for_user(link_id, user_id):
     return query_db(
         (
-            "SELECT created_at FROM user_links WHERE link_id = %s AND user_id = %s"
+            "SELECT created_at FROM user_links WHERE link_id = ? AND user_id = ?"
             " LIMIT 1"
         ),
         (link_id, user_id),
@@ -189,7 +182,7 @@ def create_link_for_user(url, user_id):
     if res is None:
         res = query_db(
             (
-                "INSERT INTO user_links (link_id, user_id) VALUES (%s, %s)"
+                "INSERT INTO user_links (link_id, user_id) VALUES (?, ?)"
                 " RETURNING created_at"
             ),
             (link_id, user_id),
@@ -201,12 +194,12 @@ def create_link_for_user(url, user_id):
 
 def delete_link_for_user(link_id, user_id):
     query_db(
-        "DELETE FROM user_links WHERE user_id = %s AND link_id = %s", (user_id, link_id)
+        "DELETE FROM user_links WHERE user_id = ? AND link_id = ?", (user_id, link_id)
     )
     query_db(
         (
-            "DELETE FROM links WHERE id = %s AND"
-            " (SELECT count(link_id) FROM user_links WHERE link_id = %s) = 0"
+            "DELETE FROM links WHERE id = ? AND"
+            " (SELECT count(link_id) FROM user_links WHERE link_id = ?) = 0"
         ),
         (link_id, link_id),
     )
@@ -316,7 +309,7 @@ def index():
         links=query_db(
             (
                 "SELECT id, url, ul.created_at FROM links l"
-                " JOIN user_links ul ON l.id = ul.link_id AND ul.user_id = %s"
+                " JOIN user_links ul ON l.id = ul.link_id AND ul.user_id = ?"
                 " ORDER BY ul.created_at DESC"
             ),
             (g.user["id"],),
@@ -335,6 +328,7 @@ def signin():
 @public
 def post_signin():
     user = get_user_by_email(request.form.get("email"))
+
     if user is None:
         return render_template("signin.html", error=SIGNIN_NO_ACCOUNT)
 
@@ -467,6 +461,8 @@ def lremove(str, prefix):
 
 
 def timesince(date):
+    if isinstance(date, str):
+        date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
     diff = datetime.utcnow() - date
 
     if diff / timedelta(days=1) > 1:
