@@ -1,9 +1,9 @@
+import apsw
 import bcrypt
 import click
 import functools
 import os
 import re
-import sqlite3
 import urllib.parse
 import uuid
 
@@ -20,7 +20,6 @@ from flask import (
     abort,
 )
 
-# from raven.contrib.flask import Sentry
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "super-secret-key")
@@ -64,9 +63,19 @@ PROFILE_SUCCESS_UPDATE = "User profile successfully updated."
 # -------
 
 
+def dict_row(cursor, row):
+    return {k[0]: row[i] for i, k in enumerate(cursor.getdescription())}
+
+
+def my_factory(connection):
+    cursor = apsw.Cursor(connection)
+    cursor.setrowtrace(dict_row)
+    return cursor
+
+
 def get_db():
-    conn = sqlite3.connect("pinub.db", isolation_level=None)
-    conn.row_factory = sqlite3.Row
+    conn = apsw.Connection(os.getenv("DSN", "pinub.db"))
+    conn.cursor_factory = my_factory
     return g.get("_db", conn)
 
 
@@ -81,8 +90,8 @@ def query_db(query, args=(), one=False):
     db = get_db()
     cur = db.cursor()
     cur.execute(query, args)
-    if query.lower().startswith(("insert ", "update ", "delete ")):
-        db.commit()
+    # if query.lower().startswith(("insert ", "update ", "delete ")):
+    # db.commit()
     if query.lower().startswith("delete "):
         return None
     return cur.fetchone() if one else cur.fetchall()
