@@ -1,4 +1,4 @@
-apsw==3.39.4.0
+apsw==3.40.0.0
 bcrypt==4.0.1
 Flask==2.2.2
 gunicorn==20.1.0
